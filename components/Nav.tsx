@@ -9,7 +9,7 @@ const LINKS = [
 
 export default function Nav({ active }: { active: string }) {
   return (
-    <nav className="flex flex-wrap gap-2 font-mono text-xs">
+    <nav className="flex flex-wrap items-center gap-2 font-mono text-xs">
       {LINKS.map((link) => (
         <Link
           key={link.href}
@@ -23,6 +23,14 @@ export default function Nav({ active }: { active: string }) {
           {link.label}
         </Link>
       ))}
+      <form action="/api/auth/logout" method="POST">
+        <button
+          type="submit"
+          className="border border-[#2A2A2C] px-3 py-1.5 text-[#5A5A5E] transition-colors hover:border-[#E5484D] hover:text-[#E5484D]"
+        >
+          LOGOUT
+        </button>
+      </form>
     </nav>
   );
 }

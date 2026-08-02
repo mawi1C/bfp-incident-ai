@@ -48,12 +48,24 @@ function stripCodeFence(text: string): string {
     .trim();
 }
 
-export async function generateSQL(question: string): Promise<string> {
+export interface ConversationTurn {
+  question: string;
+  answer: string;
+}
+
+export async function generateSQL(question: string, history: ConversationTurn[] = []): Promise<string> {
+  const historyBlock =
+    history.length > 0
+      ? `\nRecent conversation (for resolving references like "what about last month" or "same district"):\n${history
+          .map((t, i) => `Q${i + 1}: ${t.question}\nA${i + 1}: ${t.answer}`)
+          .join("\n\n")}\n`
+      : "";
+
   const prompt = `You are a PostgreSQL expert helping a fire department officer query an incident database.
 
 ${SCHEMA_DESCRIPTION}
-
-Given the officer's question below, write ONE valid PostgreSQL SELECT statement that answers it.
+${historyBlock}
+Given the officer's CURRENT question below, write ONE valid PostgreSQL SELECT statement that answers it. If the question references something from the recent conversation above (e.g. "what about May", "same station", "and last year"), resolve that reference using the conversation context — but the SQL should stand alone and fully answer the current question by itself.
 
 Rules:
 - Output ONLY the raw SQL statement. No markdown, no code fences, no explanation, no trailing semicolon commentary.
@@ -62,7 +74,7 @@ Rules:
 - Use LIMIT 50 unless the question clearly asks for a count/aggregate (in which case no LIMIT is needed).
 - If the question is ambiguous, make a reasonable interpretation rather than asking for clarification.
 
-Officer's question: "${question}"
+Officer's current question: "${question}"
 
 SQL:`;
 

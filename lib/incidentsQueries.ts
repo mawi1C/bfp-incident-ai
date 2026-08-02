@@ -16,6 +16,8 @@ export interface IncidentRow {
   casualties_death_bfp: number;
   source_file_name: string;
   cloudinary_url: string;
+  flagged: boolean;
+  flag_note: string | null;
 }
 
 export interface IncidentsPageResult {
@@ -30,6 +32,7 @@ export interface IncidentFilters {
   station?: string;
   month?: string; // "2026-06" format
   q?: string; // free-text search across location + cause
+  flaggedOnly?: boolean;
   page?: number;
 }
 
@@ -41,7 +44,7 @@ export async function getIncidentsPage(filters: IncidentFilters): Promise<Incide
   let query = supabaseAdmin
     .from("incidents")
     .select(
-      "id, station, date_of_response, location, cause_of_fire, alarm_status, responding_unit_raw, casualties_injured_civilian, casualties_injured_bfp, casualties_death_civilian, casualties_death_bfp, source_file_name, cloudinary_url",
+      "id, station, date_of_response, location, cause_of_fire, alarm_status, responding_unit_raw, casualties_injured_civilian, casualties_injured_bfp, casualties_death_civilian, casualties_death_bfp, source_file_name, cloudinary_url, flagged, flag_note",
       { count: "exact" }
     )
     .order("date_of_response", { ascending: false, nullsFirst: false })
@@ -49,6 +52,9 @@ export async function getIncidentsPage(filters: IncidentFilters): Promise<Incide
 
   if (filters.station) {
     query = query.eq("station", filters.station);
+  }
+  if (filters.flaggedOnly) {
+    query = query.eq("flagged", true);
   }
   if (filters.month) {
     // filters.month is "YYYY-MM" — build a date range for that calendar month

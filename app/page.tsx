@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDashboardData } from "@/lib/dashboardQueries";
+import { getDashboardData, getFilterValues } from "@/lib/dashboardQueries";
 import StatCard from "@/components/StatCard";
 import IncidentsOverTimeChart from "@/components/IncidentsOverTimeChart";
 import RankedBarList from "@/components/RankedBarList";
@@ -9,18 +9,37 @@ export const metadata = {
   title: "Dashboard — BFP-NCR Incident Report",
 };
 
-// Re-fetch fresh data on every visit rather than serving a cached build —
-// this dashboard needs to reflect whatever was most recently uploaded.
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
-  const data = await getDashboardData();
+interface PageProps {
+  searchParams: Promise<{ month?: string; district?: string }>;
+}
+
+export default async function DashboardPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const { months, districts } = await getFilterValues();
+
+  // Allowlist validation: only accept filter values that actually exist in
+  // the data. Anything else (typos, tampering, garbage) is silently
+  // ignored rather than passed through to a SQL query.
+  const month = params.month && months.includes(params.month) ? params.month : undefined;
+  const district = params.district && districts.includes(params.district) ? params.district : undefined;
+
+  const data = await getDashboardData({ month, district });
+
+  const buildFilterHref = (next: { month?: string; district?: string }) => {
+    const sp = new URLSearchParams();
+    if (next.month) sp.set("month", next.month);
+    if (next.district) sp.set("district", next.district);
+    const qs = sp.toString();
+    return qs ? `/?${qs}` : "/";
+  };
 
   return (
     <main className="min-h-screen bg-[#0A0A0B] px-6 py-12">
       <div className="mx-auto max-w-5xl">
         {/* Header */}
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-[#2A2A2C] pb-4">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[#2A2A2C] pb-4">
           <div>
             <p className="font-mono text-[11px] tracking-[0.2em] text-[#F5751E]">BFP–NCR</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[#EDEDEC]">
@@ -30,15 +49,69 @@ export default async function DashboardPage() {
           <Nav active="/" />
         </div>
 
+        {/* Filters */}
+        <form
+          method="GET"
+          className="mb-6 flex flex-wrap items-center gap-2 border border-[#2A2A2C] bg-[#141415] p-3"
+        >
+          <select
+            name="district"
+            defaultValue={district ?? ""}
+            className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
+          >
+            <option value="">All Districts</option>
+            {districts.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+          <select
+            name="month"
+            defaultValue={month ?? ""}
+            className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
+          >
+            <option value="">All Months</option>
+            {months.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <button
+            type="submit"
+            className="border border-[#F5751E] px-4 py-1.5 text-sm font-medium text-[#F5751E] transition-colors hover:bg-[#F5751E] hover:text-[#0A0A0B]"
+          >
+            Apply
+          </button>
+          {(month || district) && (
+            <Link
+              href="/"
+              className="font-mono text-xs text-[#6A6A6E] underline decoration-dotted hover:text-[#EDEDEC]"
+            >
+              clear filters
+            </Link>
+          )}
+          {(month || district) && (
+            <span className="ml-auto font-mono text-[11px] text-[#F5751E]">
+              {[district, month].filter(Boolean).join(" · ")}
+            </span>
+          )}
+        </form>
+
         {data.totalIncidents === 0 ? (
           <div className="border border-[#2A2A2C] bg-[#0E0E0F] px-6 py-16 text-center">
-            <p className="text-sm text-[#8A8A8E]">No incident data logged yet.</p>
-            <Link
-              href="/upload"
-              className="mt-4 inline-block border border-[#F5751E] px-4 py-2 font-mono text-xs text-[#F5751E] transition-colors hover:bg-[#F5751E] hover:text-[#0A0A0B]"
-            >
-              UPLOAD A REPORT
-            </Link>
+            <p className="text-sm text-[#8A8A8E]">
+              {month || district ? "No incidents match this filter." : "No incident data logged yet."}
+            </p>
+            {!month && !district && (
+              <Link
+                href="/upload"
+                className="mt-4 inline-block border border-[#F5751E] px-4 py-2 font-mono text-xs text-[#F5751E] transition-colors hover:bg-[#F5751E] hover:text-[#0A0A0B]"
+              >
+                UPLOAD A REPORT
+              </Link>
+            )}
           </div>
         ) : (
           <>

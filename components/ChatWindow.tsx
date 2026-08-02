@@ -25,6 +25,17 @@ export default function ChatWindow() {
   const ask = async (question: string) => {
     if (!question.trim() || pending) return;
 
+    // Build history from the current message list BEFORE adding this new
+    // question — pairs of (officer question -> assistant answer), most
+    // recent last. Error responses aren't included since they're not
+    // useful conversational context.
+    const history = [];
+    for (let i = 0; i < messages.length - 1; i++) {
+      if (messages[i].role === "officer" && messages[i + 1]?.role === "assistant" && !messages[i + 1].isError) {
+        history.push({ question: messages[i].text, answer: messages[i + 1].text });
+      }
+    }
+
     setMessages((prev) => [...prev, { role: "officer", text: question }]);
     setInput("");
     setPending(true);
@@ -33,7 +44,7 @@ export default function ChatWindow() {
       const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, history }),
       });
       const data = await res.json();
 

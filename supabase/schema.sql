@@ -71,13 +71,15 @@ create table if not exists incidents (
 
   cause_of_fire           text,                 -- the "REMARKS" column
 
-  -- Fingerprint used for incident-level dedup, independent of which file it
-  -- came from. Built from station + date + location + responding unit,
-  -- normalized (lowercased, whitespace-collapsed). This is what actually
-  -- prevents the same real-world fire from being logged twice — file-level
-  -- checks alone can't handle a file that bundles multiple months, or two
-  -- differently-named files that happen to contain overlapping data.
+  -- Fingerprint used for incident-level dedup...
   incident_key             text,
+
+  -- Data-quality review flagging: lets officers mark a row that looks
+  -- wrong (e.g. an implausible casualty count) for follow-up, directly
+  -- from the Browse page, rather than that observation just being lost.
+  flagged                  boolean not null default false,
+  flag_note                text,
+  flagged_at               timestamptz,
 
   raw_row                 jsonb,                -- full original row as JSON, safety net for anything unmapped
 

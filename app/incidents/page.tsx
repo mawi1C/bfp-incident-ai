@@ -1,12 +1,13 @@
 import Link from "next/link";
 import Nav from "@/components/Nav";
+import FlagButton from "@/components/FlagButton";
 import { getIncidentsPage, getFilterOptions } from "@/lib/incidentsQueries";
 
 export const metadata = { title: "Browse Incidents — BFP-NCR Incident Dashboard" };
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  searchParams: Promise<{ station?: string; month?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ station?: string; month?: string; q?: string; flagged?: string; page?: string }>;
 }
 
 export default async function IncidentsPage({ searchParams }: PageProps) {
@@ -15,6 +16,7 @@ export default async function IncidentsPage({ searchParams }: PageProps) {
     station: params.station || undefined,
     month: params.month || undefined,
     q: params.q || undefined,
+    flaggedOnly: params.flagged === "1",
     page: params.page ? parseInt(params.page, 10) : 1,
   };
 
@@ -28,6 +30,7 @@ export default async function IncidentsPage({ searchParams }: PageProps) {
     if (filters.station) sp.set("station", filters.station);
     if (filters.month) sp.set("month", filters.month);
     if (filters.q) sp.set("q", filters.q);
+    if (filters.flaggedOnly) sp.set("flagged", "1");
     sp.set("page", String(targetPage));
     return `/incidents?${sp.toString()}`;
   };
@@ -87,7 +90,17 @@ export default async function IncidentsPage({ searchParams }: PageProps) {
           >
             Filter
           </button>
-          {(filters.station || filters.month || filters.q) && (
+          <label className="flex items-center gap-1.5 font-mono text-xs text-[#8A8A8E]">
+            <input
+              type="checkbox"
+              name="flagged"
+              value="1"
+              defaultChecked={filters.flaggedOnly}
+              className="accent-[#F5A623]"
+            />
+            flagged only
+          </label>
+          {(filters.station || filters.month || filters.q || filters.flaggedOnly) && (
             <Link
               href="/incidents"
               className="font-mono text-xs text-[#6A6A6E] underline decoration-dotted hover:text-[#EDEDEC]"
@@ -113,12 +126,13 @@ export default async function IncidentsPage({ searchParams }: PageProps) {
                 <th className="px-3 py-2 font-normal">ALARM</th>
                 <th className="px-3 py-2 font-normal">CASUALTIES</th>
                 <th className="px-3 py-2 font-normal">SOURCE</th>
+                <th className="px-3 py-2 font-normal">FLAG</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-10 text-center text-[#5A5A5E]">
+                  <td colSpan={8} className="px-3 py-10 text-center text-[#5A5A5E]">
                     No incidents match these filters.
                   </td>
                 </tr>
@@ -130,7 +144,12 @@ export default async function IncidentsPage({ searchParams }: PageProps) {
                     r.casualties_death_civilian +
                     r.casualties_death_bfp;
                   return (
-                    <tr key={r.id} className="border-b border-[#1A1A1B] text-[#C9C9C7] hover:bg-[#141415]">
+                    <tr
+                      key={r.id}
+                      className={`border-b border-[#1A1A1B] text-[#C9C9C7] hover:bg-[#141415] ${
+                        r.flagged ? "bg-[#1A1512]/40" : ""
+                      }`}
+                    >
                       <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-[#8A8A8E]">
                         {r.date_of_response ?? "—"}
                       </td>
@@ -160,6 +179,9 @@ export default async function IncidentsPage({ searchParams }: PageProps) {
                         >
                           source
                         </a>
+                      </td>
+                      <td className="px-3 py-2">
+                        <FlagButton id={r.id} flagged={r.flagged} flagNote={r.flag_note} />
                       </td>
                     </tr>
                   );

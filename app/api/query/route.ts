@@ -1,21 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { generateSQL, generateAnswer, type CitedRow } from "@/lib/gemini";
+import { generateSQL, generateAnswer, type CitedRow, type ConversationTurn } from "@/lib/gemini";
 import { getCachedAnswer, saveCachedAnswer } from "@/lib/queryCache";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { question } = (await req.json()) as { question?: string };
+    const { question, history } = (await req.json()) as {
+      question?: string;
+      history?: ConversationTurn[];
+    };
 
     if (!question || !question.trim()) {
       return NextResponse.json({ error: "Question is required." }, { status: 400 });
     }
 
-    // 0. Exact-match cache check — skips both Gemini calls entirely if this
-    //    exact question (normalized) was already answered since the last
-    //    data upload.
+    const conversationHistory = history?.slice(-4) ?? []; // last 4 turns is plenty of context
+
+    // Cache lookup ALWAYS runs, regardless of conversation position. A
+    // fully self-contained question ("how many incidents in June") means
+    // the same thing whether it's the 1st or 5th message in a chat, so a
+    // repeat of it should still hit the cache instantly. Only the SAVE
+    // step below stays restricted to history-free questions — that's the
+    // part that's actually unsafe to cache under ambiguous phrasing (a
+    // follow-up like "what about May" means something different depending
+    // on what preceded it, so its answer shouldn't be cached under that
+    // literal text for reuse in an unrelated future conversation).
     const cached = await getCachedAnswer(question);
     if (cached) {
       return NextResponse.json({
@@ -29,7 +40,7 @@ export async function POST(req: NextRequest) {
     // 1. Officer's plain-English question -> SQL
     let sql: string;
     try {
-      sql = await generateSQL(question);
+      sql = await generateSQL(question, conversationHistory);
     } catch (err) {
       return NextResponse.json(
         { error: "Couldn't turn that into a database query. Try rephrasing it." },
@@ -59,8 +70,12 @@ export async function POST(req: NextRequest) {
     // 3. Rows -> natural-language answer with citations.
     const answer = await generateAnswer(question, sql, rows);
 
-    // Best-effort cache write — doesn't block or fail the response if it errors.
-    await saveCachedAnswer(question, sql, answer, rows.length);
+    // Best-effort cache write — only for standalone questions, matching the
+    // read-side skip above (a follow-up's answer isn't valid outside its
+    // original conversation context).
+    if (conversationHistory.length === 0) {
+      await saveCachedAnswer(question, sql, answer, rows.length);
+    }
 
     return NextResponse.json({
       answer,

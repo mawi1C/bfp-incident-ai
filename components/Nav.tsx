@@ -4,7 +4,8 @@ const LINKS = [
   { href: "/", label: "DASHBOARD" },
   { href: "/incidents", label: "BROWSE" },
   { href: "/files", label: "FILES" },
-  { href: "/uploads", label: "UPLOAD" },
+  { href: "/reports", label: "REPORTS" },
+  { href: "/upload", label: "INTAKE" },
   { href: "/chat", label: "QUERY" },
 ];
 

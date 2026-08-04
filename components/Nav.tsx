@@ -5,7 +5,8 @@ const LINKS = [
   { href: "/incidents", label: "BROWSE" },
   { href: "/files", label: "FILES" },
   { href: "/reports", label: "REPORTS" },
-  { href: "/upload", label: "UPLOAD" },
+  { href: "/upload", label: "INTAKE" },
+  { href: "/investigations", label: "CASES" },
   { href: "/chat", label: "QUERY" },
 ];
 

@@ -71,7 +71,10 @@ create table if not exists incidents (
 
   cause_of_fire           text,                 -- the "REMARKS" column
 
-  -- Fingerprint used for incident-level dedup...
+  -- Fingerprint used for incident-level dedup, independent of which file it
+  -- came from. Built from station + date + location + responding unit,
+  -- normalized. Prevents the same real-world fire from being logged twice
+  -- even across differently-named files with overlapping data.
   incident_key             text,
 
   -- Data-quality review flagging: lets officers mark a row that looks
@@ -121,6 +124,89 @@ create table if not exists query_cache (
 );
 
 create index if not exists idx_query_cache_normalized on query_cache (question_normalized);
+
+-- ------------------------------------------------------------
+-- Table: investigation_records
+-- Fire Arson Investigation Division "Monthly Fire Incident Monitoring"
+-- records. Deliberately a SEPARATE table from `incidents`, not merged in,
+-- because this source has a fundamentally different schema (investigator
+-- assignments, case classification, property ownership, gender-split
+-- casualty counts) and no reliable shared key with the regional
+-- consolidated reports (no responding-unit code to anchor dedup on, unlike
+-- `incidents`). Each row is matched to an existing incident by date +
+-- fuzzy location similarity where possible; unmatched rows are kept with
+-- incident_id = null for manual review rather than being dropped or
+-- force-linked incorrectly.
+-- ------------------------------------------------------------
+create table if not exists investigation_records (
+  id                        uuid primary key default gen_random_uuid(),
+
+  -- Link to the matching incidents row, if one was found with enough
+  -- confidence. NULL means unmatched — needs manual review, not a bug.
+  incident_id               uuid references incidents(id) on delete set null,
+  match_confidence          numeric,      -- 0-1 similarity score used to make the match, null if unmatched
+  match_status              text not null default 'unmatched', -- 'matched' | 'unmatched'
+
+  -- Dedup fingerprint (city + date + location, normalized), mirroring
+  -- incidents.incident_key — protects against re-uploading the same
+  -- monthly file twice.
+  investigation_key         text,
+
+  source_row_nr             integer, -- the "Nr" column from the source sheet, for traceability
+
+  date_of_fire              date,
+  date_of_fire_raw          text,
+  time_of_alarm_raw         text,         -- source stores this as a bare int like 944 meaning 09:44
+
+  region                    text,
+  province_district         text,
+  city_municipality         text,
+  exact_location            text,
+
+  property_general_category text,         -- e.g. RESIDENTIAL, NON_STRUCTURAL
+  property_sub_category     text,         -- e.g. SINGLE AND TWO FAMILY DWELLING
+
+  name_of_establishment     text,
+  number_of_storeys         integer,
+  name_of_owner             text,
+  name_of_occupant          text,
+
+  time_fire_started_raw     text,
+  fire_out_raw              text,
+
+  injured_firefighter_male      integer default 0,
+  injured_firefighter_female    integer default 0,
+  injured_civilian_male         integer default 0,
+  injured_civilian_female       integer default 0,
+  fatalities_firefighter_male   integer default 0,
+  fatalities_firefighter_female integer default 0,
+  fatalities_civilian_male      integer default 0,
+  fatalities_civilian_female    integer default 0,
+
+  estimated_cost_of_damage      numeric,
+  number_of_affected_structures integer,
+
+  alarm_status               text,
+  cause                      text,
+  classification_of_case     text,      -- e.g. ACCIDENTAL, UNDER INVESTIGATION, ARSON
+  fire_arson_investigator    text,
+  date_report_spot_raw       text,
+  date_report_progress_raw   text,
+  date_report_final_raw      text,
+  remarks                    text,
+
+  source_file_name           text not null,
+  cloudinary_url             text not null,
+
+  raw_row                    jsonb,
+  created_at                 timestamptz not null default now()
+);
+
+create unique index if not exists idx_investigation_dedup_key
+  on investigation_records (investigation_key);
+create index if not exists idx_investigation_incident_id on investigation_records (incident_id);
+create index if not exists idx_investigation_match_status on investigation_records (match_status);
+create index if not exists idx_investigation_date on investigation_records (date_of_fire);
 
 -- ------------------------------------------------------------
 -- RPC: execute_sql

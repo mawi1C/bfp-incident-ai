@@ -36,7 +36,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     <>
       <PageShell>
         <div className="print:hidden">
-          <div className="mx-auto max-w-3xl">
+          <div className="mx-auto max-w-5xl">
             <div className="mb-6 border-b border-[#2A2A2C] pb-4">
               <h1 className="text-2xl font-semibold tracking-tight text-[#EDEDEC]">
                 Monthly Report

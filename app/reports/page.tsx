@@ -52,7 +52,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 defaultValue={district ?? ""}
                 className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
               >
-                <option value="">all districts</option>
+                <option value="">All Districts</option>
                 {districts.map((d) => (
                   <option key={d} value={d}>
                     {d}
@@ -64,7 +64,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 defaultValue={month ?? ""}
                 className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
               >
-                <option value="">all months</option>
+                <option value="">All Months</option>
                 {months.map((m) => (
                   <option key={m} value={m}>
                     {formatMonth(m)}

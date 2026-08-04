@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Nav from "@/components/Nav";
+import PageShell from "@/components/PageShell";
 import FlagButton from "@/components/FlagButton";
 import { getIncidentsPage, getFilterOptions } from "@/lib/incidentsQueries";
 
@@ -36,16 +36,12 @@ export default async function IncidentsPage({ searchParams }: PageProps) {
   };
 
   return (
-    <main className="min-h-screen bg-[#0A0A0B] px-6 py-12">
+    <PageShell>
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-[#2A2A2C] pb-4">
-          <div>
-            <p className="font-mono text-[11px] tracking-[0.2em] text-[#F5751E]">BFP–NCR</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[#EDEDEC]">
-              Browse Incidents
-            </h1>
-          </div>
-          <Nav active="/incidents" />
+        <div className="mb-8 border-b border-[#2A2A2C] pb-4">
+          <h1 className="text-2xl font-semibold tracking-tight text-[#EDEDEC]">
+            Browse Incidents
+          </h1>
         </div>
 
         {/* Filters */}
@@ -65,7 +61,7 @@ export default async function IncidentsPage({ searchParams }: PageProps) {
             defaultValue={filters.station ?? ""}
             className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
           >
-            <option value="">All Stations</option>
+            <option value="">all stations</option>
             {stations.map((s) => (
               <option key={s} value={s}>
                 {s}
@@ -77,19 +73,13 @@ export default async function IncidentsPage({ searchParams }: PageProps) {
             defaultValue={filters.month ?? ""}
             className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
           >
-            <option value="">All Months</option>
+            <option value="">all months</option>
             {months.map((m) => (
               <option key={m} value={m}>
                 {m}
               </option>
             ))}
           </select>
-          <button
-            type="submit"
-            className="border border-[#F5751E] px-4 py-1.5 text-sm font-medium text-[#F5751E] transition-colors hover:bg-[#F5751E] hover:text-[#0A0A0B]"
-          >
-            Filter
-          </button>
           <label className="flex items-center gap-1.5 font-mono text-xs text-[#8A8A8E]">
             <input
               type="checkbox"
@@ -100,6 +90,12 @@ export default async function IncidentsPage({ searchParams }: PageProps) {
             />
             flagged only
           </label>
+          <button
+            type="submit"
+            className="border border-[#F5751E] px-4 py-1.5 text-sm font-medium text-[#F5751E] transition-colors hover:bg-[#F5751E] hover:text-[#0A0A0B]"
+          >
+            Filter
+          </button>
           {(filters.station || filters.month || filters.q || filters.flaggedOnly) && (
             <Link
               href="/incidents"
@@ -218,6 +214,6 @@ export default async function IncidentsPage({ searchParams }: PageProps) {
           </div>
         )}
       </div>
-    </main>
+    </PageShell>
   );
 }

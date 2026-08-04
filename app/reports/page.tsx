@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Nav from "@/components/Nav";
+import PageShell from "@/components/PageShell";
 import PrintButton from "@/components/PrintButton";
 import StatCard from "@/components/StatCard";
 import RankedBarList from "@/components/RankedBarList";
@@ -34,18 +34,13 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
   return (
     <>
-      {/* Screen-only chrome: nav, filters, print button. Hidden entirely when printing. */}
-      <div className="print:hidden">
-        <main className="min-h-screen bg-[#0A0A0B] px-6 py-12">
+      <PageShell>
+        <div className="print:hidden">
           <div className="mx-auto max-w-3xl">
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[#2A2A2C] pb-4">
-              <div>
-                <p className="font-mono text-[11px] tracking-[0.2em] text-[#F5751E]">BFP–NCR</p>
-                <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[#EDEDEC]">
-                  Monthly Report
-                </h1>
-              </div>
-              <Nav active="/reports" />
+            <div className="mb-6 border-b border-[#2A2A2C] pb-4">
+              <h1 className="text-2xl font-semibold tracking-tight text-[#EDEDEC]">
+                Monthly Report
+              </h1>
             </div>
 
             <form
@@ -57,7 +52,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 defaultValue={district ?? ""}
                 className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
               >
-                <option value="">All Districts</option>
+                <option value="">all districts</option>
                 {districts.map((d) => (
                   <option key={d} value={d}>
                     {d}
@@ -69,7 +64,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 defaultValue={month ?? ""}
                 className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
               >
-                <option value="">All Months</option>
+                <option value="">all months</option>
                 {months.map((m) => (
                   <option key={m} value={m}>
                     {formatMonth(m)}
@@ -145,11 +140,11 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             </p>
             <PrintButton />
           </div>
-        </main>
-      </div>
+        </div>
+      </PageShell>
 
-      {/* Print document. Invisible on screen (rendered via absolute + screen:hidden
-          equivalent using print-only display), takes over entirely when printing. */}
+      {/* Print document. Sits fully outside PageShell/the sidebar layout so
+          no sidebar margin or chrome can bleed into the printed page. */}
       <div className="hidden bg-white px-12 py-10 text-black print:block">
         <div className="mb-6 border-b-2 border-black pb-4 text-center">
           <p className="text-xs">Republic of the Philippines</p>

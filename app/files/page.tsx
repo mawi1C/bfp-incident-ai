@@ -1,4 +1,4 @@
-import Nav from "@/components/Nav";
+import PageShell from "@/components/PageShell";
 import DeleteUploadButton from "@/components/DeleteUploadButton";
 import { getSourceFiles } from "@/lib/sourceFilesQueries";
 
@@ -10,16 +10,12 @@ export default async function FilesPage() {
   const totalIncidents = files.reduce((sum, f) => sum + f.row_count, 0);
 
   return (
-    <main className="min-h-screen bg-[#0A0A0B] px-6 py-12">
+    <PageShell>
       <div className="mx-auto max-w-4xl">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-[#2A2A2C] pb-4">
-          <div>
-            <p className="font-mono text-[11px] tracking-[0.2em] text-[#F5751E]">BFP–NCR</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[#EDEDEC]">
-              Manage Uploads
-            </h1>
-          </div>
-          <Nav active="/files" />
+        <div className="mb-8 border-b border-[#2A2A2C] pb-4">
+          <h1 className="text-2xl font-semibold tracking-tight text-[#EDEDEC]">
+            Manage Uploads
+          </h1>
         </div>
 
         <p className="mb-4 font-mono text-[11px] text-[#5A5A5E]">
@@ -61,6 +57,6 @@ export default async function FilesPage() {
           </div>
         )}
       </div>
-    </main>
+    </PageShell>
   );
 }

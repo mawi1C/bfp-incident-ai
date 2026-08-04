@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Nav from "@/components/Nav";
+import PageShell from "@/components/PageShell";
 import RematchButton from "@/components/RematchButton";
 import { getUnmatchedRecords, getInvestigationStats } from "@/lib/investigationsQueries";
 
@@ -10,24 +10,20 @@ export default async function InvestigationsPage() {
   const [unmatched, stats] = await Promise.all([getUnmatchedRecords(), getInvestigationStats()]);
 
   return (
-    <main className="min-h-screen bg-[#0A0A0B] px-6 py-12">
+    <PageShell>
       <div className="mx-auto max-w-3xl">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[#2A2A2C] pb-4">
-          <div>
-            <p className="font-mono text-[11px] tracking-[0.2em] text-[#F5751E]">BFP–NCR</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[#EDEDEC]">
-              Case Records
-            </h1>
-            <p className="mt-1 max-w-xl text-xs text-[#6A6A6E]">
-              Fire Arson Investigation Division data — linked to your incident records where a
-              confident match is found by date and address.
-            </p>
-          </div>
-          <Nav active="/investigations" />
+        <div className="mb-6 border-b border-[#2A2A2C] pb-4">
+          <h1 className="text-2xl font-semibold tracking-tight text-[#EDEDEC]">
+            Case Records
+          </h1>
+          <p className="mt-1 max-w-xl text-xs text-[#6A6A6E]">
+            Fire Arson Investigation Division data — linked to your incident records where a
+            confident match is found by date and address.
+          </p>
         </div>
 
         <Link
-          href="/upload-investigation"
+          href="/upload?tab=investigation"
           className="mb-6 inline-block border border-[#F5751E] px-4 py-2 font-mono text-xs text-[#F5751E] transition-colors hover:bg-[#F5751E] hover:text-[#0A0A0B]"
         >
           + UPLOAD CASE FILE
@@ -70,6 +66,6 @@ export default async function InvestigationsPage() {
           </div>
         )}
       </div>
-    </main>
+    </PageShell>
   );
 }

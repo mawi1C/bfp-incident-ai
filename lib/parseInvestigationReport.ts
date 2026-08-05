@@ -118,6 +118,29 @@ const COL = {
 /** Same timezone-safe date extraction used in parseIncidentReport.ts —
  * .toISOString() would shift the calendar date backward by a day in any
  * UTC+ timezone, which was a real bug found and fixed earlier. */
+const MONTH_LOOKUP: Record<string, string> = {
+  jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+  jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
+};
+
+/** Parses text-form dates like "25 February 2026" or "28 FEB 26". Also
+ * tolerates a stray space typo'd into the month name itself (e.g. the
+ * real source data had "28 FE B 26") by allowing single-space breaks
+ * inside the month token and squashing them before matching — same
+ * whitespace-tolerance approach used for the header-matching fix in the
+ * main incidents parser (the "R E M A R K S" issue). */
+function parseTextDate(raw: string): string | null {
+  const m = raw.match(/(\d{1,2})\s+([A-Za-z](?:\s*[A-Za-z]){1,10})\.?\s+(\d{2,4})/);
+  if (!m) return null;
+  const day = m[1].padStart(2, "0");
+  const monthKey = m[2].replace(/\s+/g, "").toLowerCase().slice(0, 3);
+  const month = MONTH_LOOKUP[monthKey];
+  if (!month) return null;
+  let year = m[3];
+  if (year.length === 2) year = (parseInt(year, 10) < 50 ? "20" : "19") + year;
+  return `${year}-${month}-${day}`;
+}
+
 function dateToISO(value: unknown): { iso: string | null; raw: string | null } {
   if (value instanceof Date && !isNaN(value.getTime())) {
     const year = value.getFullYear();
@@ -126,6 +149,10 @@ function dateToISO(value: unknown): { iso: string | null; raw: string | null } {
     return { iso: `${year}-${month}-${day}`, raw: value.toDateString() };
   }
   const raw = value != null ? String(value).trim() : null;
+  if (raw) {
+    const iso = parseTextDate(raw);
+    if (iso) return { iso, raw };
+  }
   return { iso: null, raw };
 }
 

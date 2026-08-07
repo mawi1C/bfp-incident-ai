@@ -1,67 +1,232 @@
 import Link from "next/link";
 import PageShell from "@/components/PageShell";
 import RematchButton from "@/components/RematchButton";
-import { getUnmatchedRecords, getInvestigationStats } from "@/lib/investigationsQueries";
+import DeleteInvestigationButton from "@/components/DeleteInvestigationButton";
+import {
+  getInvestigationRecordsPage,
+  getInvestigationFilterOptions,
+  getInvestigationStats,
+} from "@/lib/investigationsQueries";
 
 export const metadata = { title: "Case Records — BFP-NCR Incident Dashboard" };
 export const dynamic = "force-dynamic";
 
-export default async function InvestigationsPage() {
-  const [unmatched, stats] = await Promise.all([getUnmatchedRecords(), getInvestigationStats()]);
+interface PageProps {
+  searchParams: Promise<{ q?: string; city?: string; month?: string; status?: string; page?: string }>;
+}
+
+export default async function InvestigationsPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const statusParam = params.status;
+  const matchStatus = statusParam === "matched" || statusParam === "unmatched" ? statusParam : undefined;
+
+  const filters = {
+    q: params.q || undefined,
+    city: params.city || undefined,
+    month: params.month || undefined,
+    matchStatus,
+    page: params.page ? parseInt(params.page, 10) : 1,
+  };
+
+  const [{ rows, totalCount, page, totalPages }, { cities, months }, stats] = await Promise.all([
+    getInvestigationRecordsPage(filters),
+    getInvestigationFilterOptions(),
+    getInvestigationStats(),
+  ]);
+
+  const buildPageHref = (targetPage: number) => {
+    const sp = new URLSearchParams();
+    if (filters.q) sp.set("q", filters.q);
+    if (filters.city) sp.set("city", filters.city);
+    if (filters.month) sp.set("month", filters.month);
+    if (filters.matchStatus) sp.set("status", filters.matchStatus);
+    sp.set("page", String(targetPage));
+    return `/investigations?${sp.toString()}`;
+  };
 
   return (
     <PageShell>
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-6 border-b border-[#2A2A2C] pb-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-[#EDEDEC]">
-            Case Records
-          </h1>
-          <p className="mt-1 max-w-xl text-xs text-[#6A6A6E]">
-            Fire Arson Investigation Division data — linked to your incident records where a
-            confident match is found by date and address.
-          </p>
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-[#2A2A2C] pb-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-[#EDEDEC]">Case Records</h1>
+            <p className="mt-1 max-w-xl text-xs text-[#6A6A6E]">
+              Fire Arson Investigation Division data, linked to incidents by date and address where a
+              confident match is found.
+            </p>
+          </div>
+          <Link
+            href="/upload?tab=investigation"
+            className="border border-[#F5751E] px-4 py-2 font-mono text-xs text-[#F5751E] transition-colors hover:bg-[#F5751E] hover:text-[#0A0A0B]"
+          >
+            + UPLOAD CASE FILE
+          </Link>
         </div>
 
-        <Link
-          href="/upload?tab=investigation"
-          className="mb-6 inline-block border border-[#F5751E] px-4 py-2 font-mono text-xs text-[#F5751E] transition-colors hover:bg-[#F5751E] hover:text-[#0A0A0B]"
+        {/* Stats strip */}
+        <div className="mb-4 flex gap-6 font-mono text-[11px] text-[#8A8A8E]">
+          <span>{stats.total.toLocaleString()} on file</span>
+          <span className="text-[#3EBD6B]">{stats.matched.toLocaleString()} linked</span>
+          <span className={stats.unmatched > 0 ? "text-[#F5A623]" : "text-[#8A8A8E]"}>
+            {stats.unmatched.toLocaleString()} needing review
+          </span>
+        </div>
+
+        {stats.unmatched > 0 && <RematchButton />}
+
+        {/* Filters */}
+        <form
+          method="GET"
+          className="mb-4 flex flex-wrap items-center gap-2 border border-[#2A2A2C] bg-[#141415] p-3"
         >
-          + UPLOAD CASE FILE
-        </Link>
+          <input
+            type="text"
+            name="q"
+            defaultValue={filters.q}
+            placeholder="search location, cause, investigator…"
+            className="min-w-[220px] flex-1 border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none placeholder:text-[#5A5A5E] focus:border-[#F5751E]"
+          />
+          <select
+            name="city"
+            defaultValue={filters.city ?? ""}
+            className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
+          >
+            <option value="">All Cities</option>
+            {cities.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <select
+            name="month"
+            defaultValue={filters.month ?? ""}
+            className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
+          >
+            <option value="">All Months</option>
+            {months.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <select
+            name="status"
+            defaultValue={filters.matchStatus ?? ""}
+            className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
+          >
+            <option value="">All Statuses</option>
+            <option value="matched">Matched</option>
+            <option value="unmatched">Unmatched</option>
+          </select>
+          <button
+            type="submit"
+            className="border border-[#F5751E] px-4 py-1.5 text-sm font-medium text-[#F5751E] transition-colors hover:bg-[#F5751E] hover:text-[#0A0A0B]"
+          >
+            Filter
+          </button>
+          {(filters.q || filters.city || filters.month || filters.matchStatus) && (
+            <Link
+              href="/investigations"
+              className="font-mono text-xs text-[#6A6A6E] underline decoration-dotted hover:text-[#EDEDEC]"
+            >
+              clear
+            </Link>
+          )}
+        </form>
 
-        {stats.total > 0 && (
-          <p className="mb-4 mt-6 font-mono text-[11px] text-[#5A5A5E]">
-            {stats.total.toLocaleString()} case records on file · {stats.matched.toLocaleString()} linked ·{" "}
-            <span className={stats.unmatched > 0 ? "text-[#F5A623]" : ""}>
-              {stats.unmatched.toLocaleString()} needing review
+        <p className="mb-3 font-mono text-[11px] text-[#5A5A5E]">
+          {totalCount.toLocaleString()} record{totalCount === 1 ? "" : "s"} matched
+        </p>
+
+        {/* Table */}
+        <div className="overflow-x-auto border border-[#2A2A2C]">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-[#2A2A2C] bg-[#141415] font-mono text-[10px] tracking-wide text-[#6A6A6E]">
+                <th className="px-3 py-2 font-normal">DATE</th>
+                <th className="px-3 py-2 font-normal">CITY</th>
+                <th className="px-3 py-2 font-normal">LOCATION</th>
+                <th className="px-3 py-2 font-normal">CAUSE</th>
+                <th className="px-3 py-2 font-normal">INVESTIGATOR</th>
+                <th className="px-3 py-2 font-normal">STATUS</th>
+                <th className="px-3 py-2 font-normal">SOURCE</th>
+                <th className="px-3 py-2 font-normal"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-3 py-10 text-center text-[#5A5A5E]">
+                    No case records match these filters.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((r) => (
+                  <tr key={r.id} className="border-b border-[#1A1A1B] text-[#C9C9C7] hover:bg-[#141415]">
+                    <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-[#8A8A8E]">
+                      {r.date_of_fire ?? "—"}
+                    </td>
+                    <td className="px-3 py-2">{r.city_municipality ?? "—"}</td>
+                    <td className="max-w-[220px] truncate px-3 py-2" title={r.exact_location ?? ""}>
+                      {r.exact_location ?? "—"}
+                    </td>
+                    <td className="max-w-[180px] truncate px-3 py-2 text-[#8A8A8E]" title={r.cause ?? ""}>
+                      {r.cause ?? "—"}
+                    </td>
+                    <td className="max-w-[160px] truncate px-3 py-2 text-[#8A8A8E]" title={r.fire_arson_investigator ?? ""}>
+                      {r.fire_arson_investigator ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[11px]">
+                      {r.match_status === "matched" ? (
+                        <span className="text-[#3EBD6B]">matched</span>
+                      ) : (
+                        <span className="text-[#F5A623]">unmatched</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <a
+                        href={r.cloudinary_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-[11px] text-[#F5751E] hover:underline"
+                      >
+                        source
+                      </a>
+                    </td>
+                    <td className="px-3 py-2">
+                      <DeleteInvestigationButton id={r.id} location={r.exact_location} />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-between font-mono text-xs text-[#8A8A8E]">
+            <span>
+              page {page} of {totalPages}
             </span>
-          </p>
-        )}
-
-        {unmatched.length > 0 && (
-          <div className="mt-8">
-            <p className="mb-3 font-mono text-[11px] tracking-wide text-[#F5A623]">
-              NEEDS MANUAL REVIEW — {unmatched.length} case{unmatched.length === 1 ? "" : "s"} couldn&apos;t
-              be confidently matched to an existing incident
-            </p>
-            <RematchButton />
-            <div className="flex flex-col gap-2">
-              {unmatched.map((r) => (
-                <div key={r.id} className="border border-[#2A2A2C] bg-[#0E0E0F] px-4 py-3 text-sm">
-                  <div className="flex flex-wrap items-center gap-3 font-mono text-[11px] text-[#6A6A6E]">
-                    <span>{r.date_of_fire ?? "date unknown"}</span>
-                    {r.match_confidence != null && (
-                      <span>closest match score: {Math.round(r.match_confidence * 100)}%</span>
-                    )}
-                    <span>{r.source_file_name}</span>
-                  </div>
-                  <p className="mt-1 text-[#C9C9C7]">{r.exact_location ?? "—"}</p>
-                  <p className="mt-0.5 text-xs text-[#8A8A8E]">
-                    {r.cause ?? "cause unknown"}
-                    {r.fire_arson_investigator ? ` · investigator: ${r.fire_arson_investigator}` : ""}
-                  </p>
-                </div>
-              ))}
+            <div className="flex gap-2">
+              {page > 1 && (
+                <Link
+                  href={buildPageHref(page - 1)}
+                  className="border border-[#2A2A2C] px-3 py-1.5 hover:border-[#F5751E] hover:text-[#EDEDEC]"
+                >
+                  ← prev
+                </Link>
+              )}
+              {page < totalPages && (
+                <Link
+                  href={buildPageHref(page + 1)}
+                  className="border border-[#2A2A2C] px-3 py-1.5 hover:border-[#F5751E] hover:text-[#EDEDEC]"
+                >
+                  next →
+                </Link>
+              )}
             </div>
           </div>
         )}

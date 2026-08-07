@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 
-const MATCH_THRESHOLD = 0.4; // minimum Jaccard similarity to accept a match
+const MATCH_THRESHOLD = 0.4; // minimum Jaccard similarity for a same-date match
+const FALLBACK_MATCH_THRESHOLD = 0.55; // stricter bar for the ±1-day fallback tier below
 
 // Common Philippine address abbreviation variants that should be treated
 // as identical when comparing two independently-typed versions of the
@@ -45,36 +46,14 @@ function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
   return union === 0 ? 0 : intersection / union;
 }
 
-export interface MatchResult {
-  incidentId: string | null;
-  confidence: number | null;
+function shiftDate(iso: string, days: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
-/**
- * Finds the best-matching incident for a given date + location, restricted
- * to candidates on the SAME date (a reasonable hard constraint -- two
- * genuinely different fires happening at the same address on the same day
- * is vanishingly unlikely, and this keeps the candidate pool small enough
- * that a simple token-overlap score is good enough without needing a real
- * fuzzy-string-matching library).
- */
-export async function matchIncident(date: string | null, normalizedLocation: string): Promise<MatchResult> {
-  if (!date || !normalizedLocation) {
-    return { incidentId: null, confidence: null };
-  }
-
-  const { data: candidates, error } = await supabaseAdmin
-    .from("incidents")
-    .select("id, location")
-    .eq("date_of_response", date);
-
-  if (error || !candidates || candidates.length === 0) {
-    return { incidentId: null, confidence: null };
-  }
-
-  const targetTokens = tokenize(normalizedLocation);
+function bestMatch(candidates: { id: string; location: string | null }[], targetTokens: Set<string>) {
   let best: { id: string; score: number } | null = null;
-
   for (const c of candidates) {
     if (!c.location) continue;
     const score = jaccardSimilarity(targetTokens, tokenize(c.location));
@@ -82,9 +61,51 @@ export async function matchIncident(date: string | null, normalizedLocation: str
       best = { id: c.id, score };
     }
   }
+  return best;
+}
 
-  if (best && best.score >= MATCH_THRESHOLD) {
-    return { incidentId: best.id, confidence: Math.round(best.score * 100) / 100 };
+export interface MatchResult {
+  incidentId: string | null;
+  confidence: number | null;
+}
+
+/**
+ * Finds the best-matching incident for a given date + location.
+ *
+ * Tries the exact date first (candidate pool restricted to same-day
+ * incidents, since two genuinely different fires at the same address on
+ * the same day is vanishingly unlikely). If nothing clears the threshold,
+ * falls back to date ±1 day with a STRICTER threshold — confirmed against
+ * real data that BFP's two systems sometimes disagree by one calendar day
+ * for fires occurring near midnight (one logs "date of response", the
+ * other logs the fire's official date, and a late-night call can fall on
+ * either side of midnight depending on which timestamp each system uses).
+ */
+export async function matchIncident(date: string | null, normalizedLocation: string): Promise<MatchResult> {
+  if (!date || !normalizedLocation) {
+    return { incidentId: null, confidence: null };
+  }
+
+  const targetTokens = tokenize(normalizedLocation);
+
+  const { data: sameDayCandidates } = await supabaseAdmin
+    .from("incidents")
+    .select("id, location")
+    .eq("date_of_response", date);
+
+  const sameDayBest = sameDayCandidates ? bestMatch(sameDayCandidates, targetTokens) : null;
+  if (sameDayBest && sameDayBest.score >= MATCH_THRESHOLD) {
+    return { incidentId: sameDayBest.id, confidence: Math.round(sameDayBest.score * 100) / 100 };
+  }
+
+  const { data: nearbyCandidates } = await supabaseAdmin
+    .from("incidents")
+    .select("id, location")
+    .in("date_of_response", [shiftDate(date, -1), shiftDate(date, 1)]);
+
+  const nearbyBest = nearbyCandidates ? bestMatch(nearbyCandidates, targetTokens) : null;
+  if (nearbyBest && nearbyBest.score >= FALLBACK_MATCH_THRESHOLD) {
+    return { incidentId: nearbyBest.id, confidence: Math.round(nearbyBest.score * 100) / 100 };
   }
 
   return { incidentId: null, confidence: null };

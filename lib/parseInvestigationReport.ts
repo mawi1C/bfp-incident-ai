@@ -141,7 +141,7 @@ function parseTextDate(raw: string): string | null {
   return `${year}-${month}-${day}`;
 }
 
-function dateToISO(value: unknown): { iso: string | null; raw: string | null } {
+export function dateToISO(value: unknown): { iso: string | null; raw: string | null } {
   if (value instanceof Date && !isNaN(value.getTime())) {
     const year = value.getFullYear();
     const month = String(value.getMonth() + 1).padStart(2, "0");

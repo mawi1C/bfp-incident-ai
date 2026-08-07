@@ -18,7 +18,7 @@ interface PageProps {
 export default async function InvestigationsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const statusParam = params.status;
-  const matchStatus = statusParam === "matched" || statusParam === "unmatched" ? statusParam : undefined;
+  const matchStatus = ( statusParam === "matched" || statusParam === "unmatched" ? statusParam : undefined ) as "matched" | "unmatched" | undefined;
 
   const filters = {
     q: params.q || undefined,

@@ -18,12 +18,15 @@ interface PageProps {
 export default async function InvestigationsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const statusParam = params.status;
+
+  // 1. Explicitly cast the matchStatus so TypeScript knows it's not a generic string
   const matchStatus = (
     statusParam === "matched" || statusParam === "unmatched"
       ? statusParam
       : undefined
   ) as "matched" | "unmatched" | undefined;
 
+  // 2. Pass it into your filters
   const filters = {
     q: params.q || undefined,
     city: params.city || undefined,
@@ -95,7 +98,7 @@ export default async function InvestigationsPage({ searchParams }: PageProps) {
             defaultValue={filters.city ?? ""}
             className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
           >
-            <option value="">All Cities</option>
+            <option value="">all cities</option>
             {cities.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -107,7 +110,7 @@ export default async function InvestigationsPage({ searchParams }: PageProps) {
             defaultValue={filters.month ?? ""}
             className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
           >
-            <option value="">All Months</option>
+            <option value="">all months</option>
             {months.map((m) => (
               <option key={m} value={m}>
                 {m}
@@ -119,9 +122,9 @@ export default async function InvestigationsPage({ searchParams }: PageProps) {
             defaultValue={filters.matchStatus ?? ""}
             className="border border-[#2A2A2C] bg-[#0E0E0F] px-3 py-1.5 text-sm text-[#EDEDEC] outline-none focus:border-[#F5751E]"
           >
-            <option value="">All Statuses</option>
-            <option value="matched">Matched</option>
-            <option value="unmatched">Unmatched</option>
+            <option value="">all statuses</option>
+            <option value="matched">matched</option>
+            <option value="unmatched">unmatched</option>
           </select>
           <button
             type="submit"
@@ -137,6 +140,17 @@ export default async function InvestigationsPage({ searchParams }: PageProps) {
               clear
             </Link>
           )}
+          <a
+            href={`/api/investigations/export?${new URLSearchParams({
+              ...(filters.q ? { q: filters.q } : {}),
+              ...(filters.city ? { city: filters.city } : {}),
+              ...(filters.month ? { month: filters.month } : {}),
+              ...(filters.matchStatus ? { status: filters.matchStatus } : {}),
+            }).toString()}`}
+            className="ml-auto border border-[#2A2A2C] px-3 py-1.5 font-mono text-xs text-[#8A8A8E] transition-colors hover:border-[#3EBD6B] hover:text-[#3EBD6B]"
+          >
+            ⭳ EXPORT TO EXCEL
+          </a>
         </form>
 
         <p className="mb-3 font-mono text-[11px] text-[#5A5A5E]">

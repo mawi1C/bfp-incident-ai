@@ -18,7 +18,11 @@ interface PageProps {
 export default async function InvestigationsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const statusParam = params.status;
-  const matchStatus = ( statusParam === "matched" || statusParam === "unmatched" ? statusParam : undefined ) as "matched" | "unmatched" | undefined;
+  const matchStatus = (
+    statusParam === "matched" || statusParam === "unmatched"
+      ? statusParam
+      : undefined
+  ) as "matched" | "unmatched" | undefined;
 
   const filters = {
     q: params.q || undefined,
@@ -169,7 +173,9 @@ export default async function InvestigationsPage({ searchParams }: PageProps) {
                     </td>
                     <td className="px-3 py-2">{r.city_municipality ?? "—"}</td>
                     <td className="max-w-[220px] truncate px-3 py-2" title={r.exact_location ?? ""}>
-                      {r.exact_location ?? "—"}
+                      <Link href={`/investigations/${r.id}`} className="hover:text-[#F5751E] hover:underline">
+                        {r.exact_location ?? "—"}
+                      </Link>
                     </td>
                     <td className="max-w-[180px] truncate px-3 py-2 text-[#8A8A8E]" title={r.cause ?? ""}>
                       {r.cause ?? "—"}
